@@ -81,12 +81,13 @@ class Train::Plugins::Transport
       plat = Train::Platforms.name(name)
       plat.backend = self
       plat.family_hierarchy = family_hierarchy(plat)
+      plat
     end
 
     def family_hierarchy(plat)
       plat.families.each_with_object([]) do |(k, _v), memo|
         memo << k.name
-        memo << mock_os_hierarchy(k) unless k.families.empty?
+        memo << family_hierarchy(k) unless k.families.empty?
       end
     end
 

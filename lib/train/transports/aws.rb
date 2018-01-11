@@ -19,19 +19,14 @@ module Train::Transports
     class Connection < BaseConnection
       def initialize(options)
         super(options)
-        # login_command
       end
 
       def platform
         direct_platform('aws')
       end
 
-      def local?
-        true
-      end
-
       def aws_client(klass)
-        @cache[klass.to_sym] ||= klass.new
+        @cache[klass.to_s.to_sym] ||= klass.new
       end
 
       def connect
@@ -48,7 +43,7 @@ module Train::Transports
       end
 
       def uri
-        'local://'
+        "aws://#{@options[:region]}"
       end
     end
   end
