@@ -22,7 +22,8 @@ module Train::Transports
         options[:profile] = options[:profile] || options[:path]
         super(options)
 
-        @cache[:aws_client] = {}
+        @cache_enabled[:aws] = true
+        @cache[:aws] = {}
       end
 
       def platform
@@ -30,7 +31,7 @@ module Train::Transports
       end
 
       def aws_client(klass)
-        @cache[:aws_client][klass.to_s.to_sym] ||= klass.new
+        @cache[:aws][klass.to_s.to_sym] ||= klass.new
       end
 
       def aws_resource(klass, args)
