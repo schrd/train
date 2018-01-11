@@ -25,8 +25,8 @@ module Train::Transports
         direct_platform('aws')
       end
 
-      def aws_client(klass)
-        @cache[klass.to_s.to_sym] ||= klass.new
+      def aws_client(klass, args = {})
+        @cache[klass.to_s.to_sym] ||= klass.new(args)
       end
 
       def connect
