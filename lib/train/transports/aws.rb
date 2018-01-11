@@ -18,6 +18,8 @@ module Train::Transports
 
     class Connection < BaseConnection
       def initialize(options)
+        options[:region] = options[:region] || options[:host]
+        options[:profile] = options[:profile] || options[:something]
         super(options)
       end
 
@@ -25,8 +27,12 @@ module Train::Transports
         direct_platform('aws')
       end
 
-      def aws_client(klass, args = {})
-        @cache[:aws_client][klass.to_s.to_sym] ||= klass.new(args)
+      def aws_client(klass)
+        @cache[:aws_client][klass.to_s.to_sym] ||= klass.new
+      end
+
+      def aws_resource(klass, args)
+        klass.new(args)
       end
 
       def connect

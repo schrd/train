@@ -80,7 +80,7 @@ class Train::Plugins::Transport
     def direct_platform(name)
       plat = Train::Platforms.name(name)
       plat.backend = self
-      plat.family_hierarchy = family_hierarchy(plat)
+      plat.family_hierarchy = family_hierarchy(plat).flatten
       plat
     end
 
