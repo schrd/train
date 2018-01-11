@@ -26,7 +26,7 @@ module Train::Transports
       end
 
       def aws_client(klass, args = {})
-        @cache[klass.to_s.to_sym] ||= klass.new(args)
+        @cache[:aws_client][klass.to_s.to_sym] ||= klass.new(args)
       end
 
       def connect
