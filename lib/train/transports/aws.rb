@@ -19,8 +19,10 @@ module Train::Transports
     class Connection < BaseConnection
       def initialize(options)
         options[:region] = options[:region] || options[:host]
-        options[:profile] = options[:profile] || options[:something]
+        options[:profile] = options[:profile] || options[:path]
         super(options)
+
+        @cache[:aws_client] = {}
       end
 
       def platform
