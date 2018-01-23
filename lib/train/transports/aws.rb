@@ -18,12 +18,19 @@ module Train::Transports
 
     class Connection < BaseConnection
       def initialize(options)
-        options[:region] = options[:region] || options[:host]
-        options[:profile] = options[:profile] || options[:path]
+        # Override for any cli options
+        # aws://region/my-profile
+        options[:region] = options[:host] || options[:region]
+        if options[:path]
+          # string the leading / from path
+          options[:profile] = options[:path][1..-1]
+        end
         super(options)
 
         @cache_enabled[:aws] = true
         @cache[:aws] = {}
+
+        connect
       end
 
       def platform
@@ -31,6 +38,7 @@ module Train::Transports
       end
 
       def aws_client(klass)
+        return klass.new unless cache_enabled?(:aws)
         @cache[:aws][klass.to_s.to_sym] ||= klass.new
       end
 
@@ -39,16 +47,21 @@ module Train::Transports
       end
 
       def connect
-        creds = Aws::Credentials.new(
-          @options[:aws_access_key_id],
-          @options[:aws_secret_access_key],
-          @options[:aws_session_token],
-        )
+        if @options[:profile]
+          creds = ::Aws::SharedCredentials.new(profile_name: @options[:profile])
+        else
+          creds = ::Aws::Credentials.new(
+            @options[:access_key_id],
+            @options[:secret_access_key],
+            @options[:session_token],
+          )
+        end
+
         opts = {
           region: @options[:region],
           credentials: creds,
         }
-        Aws.config.update(opts)
+        ::Aws.config.update(opts)
       end
 
       def uri

@@ -1,40 +1,94 @@
 # encoding: utf-8
 
+# envs have to be set before we start up the testing
+ENV['AWS_REGION'] = 'test_region'
+ENV['AWS_ACCESS_KEY_ID'] = 'test_key_id'
+ENV['AWS_SECRET_ACCESS_KEY'] = 'test_access_key'
+ENV['AWS_SESSION_TOKEN'] = 'test_session_token'
+
 require 'helper'
 require 'train/transports/aws'
 
 describe 'aws transport' do
-  let(:klass) do
-    plat = Train::Platforms.name('aws').in_family('cloud')
-    plat.add_platform_methods
-    Train::Platforms::Detect.stubs(:scan).returns(plat)
-    ENV['AWS_ACCESS_KEY_ID'] = 'AKIA'
-    ENV['AWS_SECRET_ACCESS_KEY'] = ''
-    Train::Transports::Aws
+  def transport(options = nil)
+    Train::Transports::Aws.new(options)
   end
-
-  let(:aws) { klass.new({ region: 'us-east-1'}) }
+  let(:connection) { transport.connection }
+  let(:options) { connection.instance_variable_get(:@options) }
+  let(:cache) { connection.instance_variable_get(:@cache) }
 
   describe 'options' do
-    it 'can be instantiated (with valid config)' do
-      aws.wont_be_nil
+    it 'defaults to env options' do
+      options[:region].must_equal 'test_region'
+      options[:access_key_id].must_equal 'test_key_id'
+      options[:secret_access_key].must_equal 'test_access_key'
+      options[:session_token].must_equal 'test_session_token'
     end
-  
-    it 'configures the provided region' do
-      aws.options[:region].must_equal 'us-east-1'
+
+    it 'test options override' do
+      transport = transport(region: 'us-east-2', access_key_id: '8')
+      options = transport.connection.instance_variable_get(:@options)
+      options[:region].must_equal 'us-east-2'
+      options[:access_key_id].must_equal '8'
+      options[:secret_access_key].must_equal 'test_access_key'
+      options[:session_token].must_equal 'test_session_token'
+    end
+
+    it 'test url parse override' do
+      transport = transport(host: 'us-east-2')
+      options = transport.connection.instance_variable_get(:@options)
+      options[:region].must_equal 'us-east-2'
+      options[:session_token].must_equal 'test_session_token'
     end
   end
 
-  # I want to:
-  #   AWS SDK deps OK
-  #   Try to use train caching to handle caching Client objects (see base_connection)
-  #   Try to have generic / metaprogramming approach to getting new Clients
-  #   Verify that I can read credentials from env vars
-  #   Obtain the credentials as expected by AWS, or an AWS Connection
-  #   Validate the credentials args?
-  #   Test URI variations
-  #   Add AWS platform declaration / detection
-  #      override platform() in base_connection to force assignment (no detection)
-  #      add to platforms/os.rb for family: family api, platform aws
+  describe 'platform' do
+    it 'returns platform' do
+      plat = connection.platform
+      plat.name.must_equal 'aws'
+      plat.family_hierarchy.must_equal ['cloud', 'api']
+    end
+  end
 
+  describe 'aws_client' do
+    it 'test aws_client with caching' do
+      client = connection.aws_client(Object)
+      client.is_a?(Object).must_equal true
+      cache[:aws].count.must_equal 1
+    end
+
+    it 'test aws_client without caching' do
+      connection.disable_cache(:aws)
+      client = connection.aws_client(Object)
+      client.is_a?(Object).must_equal true
+      cache[:aws].count.must_equal 0
+    end
+  end
+
+  describe 'aws_resource' do
+    class AwsResource
+      attr_reader :hash
+      def initialize(hash)
+        @hash = hash
+      end
+    end
+
+    it 'test aws_resource with arguments' do
+      hash = { user: 1, name: 'test_user' }
+      resource = connection.aws_resource(AwsResource, hash)
+      resource.hash.must_equal hash
+      cache[:aws].count.must_equal 0
+    end
+  end
+
+  describe 'connect' do
+    it 'validate aws connection config' do
+      options[:profile] = nil
+      creds = connection.connect
+      creds[:credentials].access_key_id.must_equal 'test_key_id'
+      creds[:credentials].secret_access_key.must_equal 'test_access_key'
+      creds[:credentials].session_token.must_equal 'test_session_token'
+      creds[:region].must_equal 'test_region'
+    end
+  end
 end
